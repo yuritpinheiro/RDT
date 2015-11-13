@@ -1,4 +1,4 @@
-LIBS := -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system
+LIBS :=-I /home/ubuntu/development/projects/SFML/include -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system
 CXX := g++
 
 all: rdt

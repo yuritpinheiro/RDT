@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <queue>
 #include <unistd.h>
-#include <bigu_files.h>
+#include "bigu_files.h"
 
 struct DataSample {
 	std::size_t sampleCount;
@@ -75,42 +75,47 @@ private:
 int main(int argc, char const *argv[])
 {
 	std::vector<std::string> availableDevices = sf::SoundRecorder::getAvailableDevices();
-	char* ganho0_char, ganho1_char;
-	system(SETUP);
+	char* ganho0_char;
+	char* ganho1_char;
+	// system(SETUP);
 	// iterate over availableDevices and print
 	for (int i = 0; i < availableDevices.size(); ++i) {
 		printf("%d - %s\n", i, availableDevices[i].c_str());
 	}
 
 	// Get from user the selected device
-	int opt = 0; // user option
+	int opt = 1; // user option
 
 	//std::queue<DataSample> dataSample;
 	int ganho_pot_0 = 1;
 	int ganho_pot_1 = 1;
 	DataSample dataSample;
-	Stream str;
+	printf("str criado\n");
 	Recorder rec;
+	printf("rec criado\n");
 	if (!rec.setDevice(availableDevices[opt])){
 		printf("Not able to use device");
+	} else {
+		printf("Device setted\n");
 	}
 
 	// inicializar a comunicação
-	rec.init(&dataSample, &ganho_pot_0, &ganho_pot_0);
+	rec.init(&dataSample, &ganho_pot_0, &ganho_pot_1);
 	printf("Recorder iniciado\n");
 	rec.start();
 	printf("Gravação iniciada\n");
-	usleep(10000);
+	usleep(100000);
 
+	Stream str;
 	str.init(atoi(argv[1]), 44100, &dataSample);
 	str.play();
 
 	while(1){
-		read_file(ADC_POT_0_VALUE, ganho0_char);
-		read_file(ADC_POT_1_VALUE, ganho1_char);
-		ganho_pot_0 = atoi(ganho0_char);
-		ganho_pot_1 = atoi(ganho1_char);
-		usleep(100000000);
+		// read_file(ADC_POT_0_VALUE, ganho0_char);
+		// read_file(ADC_POT_1_VALUE, ganho1_char);
+		// ganho_pot_0 = atoi(ganho0_char);
+		// ganho_pot_1 = atoi(ganho1_char);
+		usleep(1000000);
 		// printf("status %d\n", (int)str.getStatus());
 		if (str.getStatus() != Stream::Playing) {
 			str.play();
