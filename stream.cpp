@@ -9,16 +9,25 @@ class MyStream : public sf::SoundStream
 {
 public:
 
-    void load(const sf::SoundBuffer& buffer)
+    void load(std::string device)//const sf::SoundBuffer& buffer)
     {
-        // extract the audio samples from the sound buffer to our own container
+		if (!recorder.setDevice(device))
+		{
+    		printf("error: device selection failed\n");
+		}
+		printf("loaded\n");
+		
+		recorder.start();
+        
+        /*// extract the audio samples from the sound buffer to our own container
         m_samples.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());
 
         // reset the current playing position 
         m_currentSample = 0;
-
+		*/
         // initialize the base class
-        initialize(buffer.getChannelCount(), buffer.getSampleRate());
+        initialize(1, 44100);
+		printf("initialized\n");   
     }
 
 private:
@@ -28,27 +37,30 @@ private:
         // number of samples to stream every time the function is called;
         // in a more robust implementation, it should be a fixed
         // amount of time rather than an arbitrary number of samples
-        const int samplesToStream = 1024;
+        //const int samplesToStream = 1024;
+
+        const sf::SoundBuffer& buffer  = recorder.getBuffer();
+		//m_samples.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());
 
         // set the pointer to the next audio samples to be played
-        data.samples = &m_samples[m_currentSample];
+        data.samples = buffer.getSamples();// &m_samples[m_currentSample];
 
         // have we reached the end of the sound?
-        if (m_currentSample + samplesToStream <= m_samples.size())
-        {
+        //if (m_currentSample + samplesToStream <= m_samples.size())
+        //{
             // end not reached: stream the samples and continue
-            data.sampleCount = samplesToStream;
-            m_currentSample += samplesToStream;
+            data.sampleCount = buffer.getSampleCount();//samplesToStream;
+            //m_currentSample += buffer.getSampleCount();//samplesToStream;
+            printf("get data\n");
             return true;
-        }
-        else
-        {
+        //}
+        //else
+        //{
             // end of stream reached: stream the remaining samples and stop playback
-            data.sampleCount = m_samples.size() - m_currentSample;
-            m_currentSample = m_samples.size();
-            return false;
-        }
-
+            //data.sampleCount = m_samples.size() - m_currentSample;
+            //m_currentSample = m_samples.size();
+            //return false;
+        //}
 
     }
 
@@ -58,6 +70,7 @@ private:
         m_currentSample = static_cast<std::size_t>(timeOffset.asSeconds() * getSampleRate() * getChannelCount());
     }
 
+	sf::SoundBufferRecorder recorder;
     std::vector<sf::Int16> m_samples;
     std::size_t m_currentSample;
 };
@@ -80,35 +93,27 @@ int main()
 		printf("%s\n",availableDevices[i].c_str());
 	std::string inputDevice = availableDevices[0];
 
-	sf::SoundBufferRecorder recorder;
-	
 
-	if (!recorder.setDevice(inputDevice))
-	{
-    	printf("error: device selection failed\n");
 
-	}
+	//sleep(1);
+	//recorder.stop();
+	MyStream stream;
+	stream.load(availableDevices[0]);
 
-	while(true){
-		//recorder.start();
-		//sleep(10);
-		//recorder.stop();
-	//
-		//const sf::SoundBuffer& buffer = recorder.getBuffer();
-		//buffer.saveToFile("ooo.ogg");
-	
-		sf::SoundBuffer buffer1;
-	    buffer1.loadFromFile("say.ogg");
-		
-	    MyStream stream;
-	   	printf("%d\n",recorder.getBuffer().getChannelCount());
-	   	printf("%d\n",recorder.getBuffer().getSampleRate());
-	    stream.load(buffer1);
-	    stream.play();
-	
-	    // let it play until it is finished
-	    while (stream.getStatus() == MyStream::Playing)
-	        sf::sleep(sf::seconds(0.0000000001));
+	stream.play();
+	printf("played\n");
+	while(true){	
+		/*
+	   	const sf::SoundBuffer& buffer  = recorder.getBuffer();
+    	stream.load(buffer);   
+    	recorder.start();
+    	stream.play();
+	    
+    	while (stream.getStatus() == MyStream::Playing)
+			sf::sleep(sf::seconds(0.1f));
+	    
+	    recorder.stop();
+	    */
 	}
     return 0;
 }
