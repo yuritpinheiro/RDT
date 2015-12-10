@@ -1,93 +1,108 @@
 #include <SFML/Audio.hpp>
+#include <vector>
+#include <string>
+#include <cstdio>
+#include <queue>
 #include <unistd.h>
-#include <stdio.h>
-#include <string.h>
 
-class MyStream : public sf::SoundStream {
-public:
-
-    void load(const sf::SoundBuffer& buffer)
-    {
-        // extract the audio samples from the sound buffer to our own container
-        m_samples.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());
-
-        // reset the current playing position
-        m_currentSample = 0;
-
-        // initialize the base class
-        initialize(buffer.getChannelCount(), buffer.getSampleRate());
-    }
-
-private:
-
-    virtual bool onGetData(Chunk& data)
-    {
-        // number of samples to stream every time the function is called;
-        // in a more robust implementation, it should be a fixed
-        // amount of time rather than an arbitrary number of samples
-        const int samplesToStream = 50000;
-
-        // set the pointer to the next audio samples to be played
-        data.samples = &m_samples[m_currentSample];
-
-        // have we reached the end of the sound?
-        if (m_currentSample + samplesToStream <= m_samples.size())
-        {
-            // end not reached: stream the samples and continue
-            data.sampleCount = samplesToStream;
-            m_currentSample += samplesToStream;
-            return true;
-        }
-        else
-        {
-            // end of stream reached: stream the remaining samples and stop playback
-            data.sampleCount = m_samples.size() - m_currentSample;
-            m_currentSample = m_samples.size();
-            return false;
-        }
-    }
-
-    virtual void onSeek(sf::Time timeOffset)
-    {
-
-    }
-
-    std::vector<sf::Int16> m_samples;
-    std::size_t m_currentSample;
+struct DataSample {
+	std::size_t sampleCount;
+	const sf::Int16* samples;
 };
 
-int main(int argc, char const *argv[]) {
-
-	// std::vector<std::string> availableDevices = sf::SoundBufferRecorder::getAvailableDevices();
-	//
-	// for (int i = 0; i < availableDevices.size(); i++) {
-	// 	printf("%s\n", availableDevices[i].c_str());
-	// }
-
-	// Testar interfaces de entradas de audio
-	if (!sf::SoundBufferRecorder::isAvailable()) {
-		printf("Audio interface not available.\n");
+class Recorder : public sf::SoundRecorder {
+public:	
+	void init(DataSample* head) {//std::queue<DataSample>* head){
+		dataSample = head;
+		setProcessingInterval(sf::milliseconds(50));
 	}
 
-	// Criar o buffer de entrada
-	sf::SoundBufferRecorder recorder;
-	printf("Começo gravação\n");
-	recorder.start();
+private:
+	virtual bool onProcessSamples(const sf::Int16* samples, std::size_t sampleCount){
+		// transform
+		
+		// apply gains
+		
+		// itransform
+		
+		// send to buffer
+		DataSample sample;
+	
+		dataSample->samples = samples;
+		dataSample->sampleCount = sampleCount;
+		//dataSample->push(sample);
+		//printf("new sample\n");
+		return true;
+	}
+	//std::queue<DataSample>* dataSample;
+	DataSample* dataSample;
+};
 
-	// delay
-	usleep(10000000);
+class Stream : public sf::SoundStream {
+public:
+	void init(unsigned int channelCount, unsigned int sampleRate, DataSample* head) {//std::queue<DataSample>* head){
+		dataSample = head;
+		initialize(channelCount, sampleRate);
+	}
 
-	recorder.stop();
-	printf("Fim gravação\n");
+private:
+	virtual bool onGetData(Chunk& data){
+		//if (dataSample->size() > 0) {
+			data.samples = dataSample->samples;
+			data.sampleCount = dataSample->sampleCount;
+			//printf("sC: %d\n", (int)dataSample->size());
+			//dataSample->pop();
+			return true;
+		//} else {
+			//return false;
+		//}
+	}
 
-	const sf::SoundBuffer& buffer = recorder.getBuffer();
+	virtual void onSeek(sf::Time tiemOffset){}
 
-	sf::Sound sound(buffer);
-	printf("Começo play\n");
-	sound.play();
+	//std::queue<DataSample>* dataSample;
+	DataSample* dataSample;
+};
 
-	usleep(10000000);
+int main(int argc, char const *argv[])
+{
+	std::vector<std::string> availableDevices = sf::SoundRecorder::getAvailableDevices();
+	
+	// iterate over availableDevices and print
+	for (int i = 0; i < availableDevices.size(); ++i) {
+		printf("%d - %s\n", i, availableDevices[i].c_str());
+	}
 
-	printf("Fim play\n");
+	// Get from user the selected device
+	int opt = 0; // user option
+
+	//std::queue<DataSample> dataSample;
+	DataSample dataSample;
+	Stream str;
+	Recorder rec;
+	if (!rec.setDevice(availableDevices[opt])){
+		printf("Not able to use device");
+	}
+
+	// inicializar a comunicação
+	rec.init(&dataSample);
+	printf("Recorder iniciado\n");
+	rec.start();
+	printf("Gravação iniciada\n");
+	usleep(100000);
+
+	str.init(atoi(argv[1]), 44100, &dataSample);
+	str.play();
+
+	while(1){
+		usleep(100000000);
+		// printf("status %d\n", (int)str.getStatus());
+		if (str.getStatus() != Stream::Playing) {
+			str.play();
+		}
+	}
+
+	rec.stop();
+
 	return 0;
 }
