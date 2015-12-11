@@ -6,8 +6,8 @@
 /* Fim das inclusões */
 
 /* File paths */
-#define ADC_POT_1_VALUE "/sys/devices/ocp.3/helper.15/AIN5"
-#define ADC_POT_0_VALUE "/sys/devices/ocp.3/helper.15/AIN1"
+#define ADC_POT_1_VALUE "/sys/devices/ocp.3/helper.12/AIN5"
+#define ADC_POT_0_VALUE "/sys/devices/ocp.3/helper.12/AIN1"
 /* File paths */
 
 #define SETUP "echo cape-bone-iio > /sys/devices/bone_capemgr.*/slots"

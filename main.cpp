@@ -4,65 +4,81 @@
 #include <cstdio>
 #include <queue>
 #include <unistd.h>
-#include "bigu_files.h"
 #include <fftw3.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "bigu_files.h"
 
 struct DataSample {
 	std::size_t sampleCount;
-	const sf::Int16* samples;
+	sf::Int16* samples;
 };
 
 
 
 class Recorder : public sf::SoundRecorder {
 public:	
-	void init(DataSample* head, int* ganho_pot_0, int* ganho_pot_1) {//std::queue<DataSample>* head){
+	void init(DataSample* head, double* ganho_pot_0, double* ganho_pot_1) {//std::queue<DataSample>* head){
 		dataSample = head;
 		setProcessingInterval(sf::milliseconds(50));
 		this->ganho_pot_1 = ganho_pot_1;
 		this->ganho_pot_0 = ganho_pot_0;
-		in = (fftw3_complex*) fftw_malloc(sizeof() * N);
-		out = (fftw3_complex*) fftw_malloc(sizeof() * N);
-		p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-		p2 = fftw_plan_dft_1d(N, out, in, FFTW_BACKWARD, FFTW_ESTIMATE);
 	}
 
 private:
 	virtual bool onProcessSamples(const sf::Int16* samples, std::size_t sampleCount){
 		// transform
-		for (int i = 0; i < N; i++) {
+		in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (int) sampleCount);
+		out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (int) sampleCount);
+
+		p = fftw_plan_dft_1d((int) sampleCount, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+		p2 = fftw_plan_dft_1d((int) sampleCount, out, in, FFTW_BACKWARD, FFTW_ESTIMATE);
+
+		for (int i = 0; i < (int) sampleCount; i++) {
 			in[i][0] = samples[i];
 			in[i][1] = 0;
 		}
 		fftw_execute(p);
 
 		// apply gains
-		
-
-		// itransform
-		fftw_execute(p2);
-		for (int i = 0; i < N; i++) {
-			samples[i] = in[i][0];
+		for (int i = 1; i < (int)sampleCount / 4 ; i++) {
+			out[i][0] = out[i][0] * (*ganho_pot_0);
+			out[(int)sampleCount - i][0] = out[i][0] * (*ganho_pot_0);
+			out[i + (int)sampleCount/4][0] *= (*ganho_pot_1);
+			out[(int)sampleCount - i - (int)sampleCount/4][0] = (*ganho_pot_1);
 		}
 
-		// send to buffer
-		DataSample sample;
-	
-		dataSample->samples = samples;
+//		printf("Pot 0: %lf\n", *ganho_pot_0);
+		printf("Pot 1: %d\n", (int)sampleCount);
+
+
+		// itransform and send to buffer
+		fftw_execute(p2);
+		dataSample->samples = (sf::Int16*) malloc(sizeof(sf::Int16) * sampleCount);
+		for (int i = 1; i < (int) sampleCount; i++) {
+			dataSample->samples[i] = in[i][0]/(int)sampleCount;
+		}
+
+		// dataSample->samples = samples;
 		dataSample->sampleCount = sampleCount;
-		//dataSample->push(sample);
-		//printf("new sample\n");
+		// dataSample->push(sample);
+		// printf("new sample\n");
+
+		fftw_destroy_plan(p);
+		fftw_destroy_plan(p2);
+
+		fftw_free(in);
+		fftw_free(out);
+
 		return true;
 	}
 
 	//std::queue<DataSample>* dataSample;
 
-	fftw3_complex *in, *out;
-	fftw3_plan p, p2;
-	int N = 400;
+	fftw_complex *in, *out;
+	fftw_plan p, p2;
+	const static int N = 3200;
 	double* ganho_pot_0;
 	double* ganho_pot_1;
 	DataSample* dataSample;
@@ -133,11 +149,13 @@ int main(int argc, char const *argv[])
 	str.play();
 
 	while(1){
-		// read_file(ADC_POT_0_VALUE, ganho0_char);
-		// read_file(ADC_POT_1_VALUE, ganho1_char);
-		// ganho_pot_0 = atof(ganho0_char);
-		// ganho_pot_1 = atof(ganho1_char);
-		usleep(1000000);
+		read_file(ADC_POT_0_VALUE, ganho0_char);
+		read_file(ADC_POT_1_VALUE, ganho1_char);
+		ganho_pot_0 = atof(ganho0_char) / 180.f;
+		ganho_pot_1 = atof(ganho1_char) / 180.f;
+//		printf("Pot 0: %lf\n", ganho_pot_0);
+//		printf("Pot 1: %lf\n", ganho_pot_1);
+		usleep(100000);
 		// printf("status %d\n", (int)str.getStatus());
 		if (str.getStatus() != Stream::Playing) {
 			str.play();
