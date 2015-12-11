@@ -5,6 +5,10 @@
 #include <queue>
 #include <unistd.h>
 #include "bigu_files.h"
+#include <fftw3.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 struct DataSample {
 	std::size_t sampleCount;
@@ -20,16 +24,30 @@ public:
 		setProcessingInterval(sf::milliseconds(50));
 		this->ganho_pot_1 = ganho_pot_1;
 		this->ganho_pot_0 = ganho_pot_0;
+		in = (fftw3_complex*) fftw_malloc(sizeof() * N);
+		out = (fftw3_complex*) fftw_malloc(sizeof() * N);
+		p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+		p2 = fftw_plan_dft_1d(N, out, in, FFTW_BACKWARD, FFTW_ESTIMATE);
 	}
 
 private:
 	virtual bool onProcessSamples(const sf::Int16* samples, std::size_t sampleCount){
 		// transform
-		
+		for (int i = 0; i < N; i++) {
+			in[i][0] = samples[i];
+			in[i][1] = 0;
+		}
+		fftw_execute(p);
+
 		// apply gains
 		
+
 		// itransform
-		
+		fftw_execute(p2);
+		for (int i = 0; i < N; i++) {
+			samples[i] = in[i][0];
+		}
+
 		// send to buffer
 		DataSample sample;
 	
@@ -41,8 +59,12 @@ private:
 	}
 
 	//std::queue<DataSample>* dataSample;
-	int* ganho_pot_0;
-	int* ganho_pot_1;
+
+	fftw3_complex *in, *out;
+	fftw3_plan p, p2;
+	int N = 400;
+	double* ganho_pot_0;
+	double* ganho_pot_1;
 	DataSample* dataSample;
 };
 
@@ -75,8 +97,8 @@ private:
 int main(int argc, char const *argv[])
 {
 	std::vector<std::string> availableDevices = sf::SoundRecorder::getAvailableDevices();
-	char* ganho0_char;
-	char* ganho1_char;
+	char* ganho0_char = new char[4];
+	char* ganho1_char = new char[4];
 	// system(SETUP);
 	// iterate over availableDevices and print
 	for (int i = 0; i < availableDevices.size(); ++i) {
@@ -84,11 +106,11 @@ int main(int argc, char const *argv[])
 	}
 
 	// Get from user the selected device
-	int opt = 1; // user option
+	int opt = atoi(argv[1]); // user option
 
 	//std::queue<DataSample> dataSample;
-	int ganho_pot_0 = 1;
-	int ganho_pot_1 = 1;
+	double ganho_pot_0 = 1;
+	double ganho_pot_1 = 1;
 	DataSample dataSample;
 	printf("str criado\n");
 	Recorder rec;
@@ -107,14 +129,14 @@ int main(int argc, char const *argv[])
 	usleep(100000);
 
 	Stream str;
-	str.init(atoi(argv[1]), 44100, &dataSample);
+	str.init(atoi(argv[2]), 44100, &dataSample);
 	str.play();
 
 	while(1){
 		// read_file(ADC_POT_0_VALUE, ganho0_char);
 		// read_file(ADC_POT_1_VALUE, ganho1_char);
-		// ganho_pot_0 = atoi(ganho0_char);
-		// ganho_pot_1 = atoi(ganho1_char);
+		// ganho_pot_0 = atof(ganho0_char);
+		// ganho_pot_1 = atof(ganho1_char);
 		usleep(1000000);
 		// printf("status %d\n", (int)str.getStatus());
 		if (str.getStatus() != Stream::Playing) {
