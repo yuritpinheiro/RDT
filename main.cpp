@@ -1,13 +1,13 @@
 #include <SFML/Audio.hpp>
-#include <vector>
+# include <vector> 
 #include <string>
-#include <cstdio>
-#include <queue>
-#include <unistd.h>
-#include <fftw3.h>
+# include <cstdio>
+# include <queue> 
+#include <unistd.h> 
+#include <fftw3.h> 
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
+# include <stdio.h>
+# include <stdlib.h> 
 #include "bigu_files.h"
 
 struct DataSample {
@@ -29,36 +29,54 @@ public:
 private:
 	virtual bool onProcessSamples(const sf::Int16* samples, std::size_t sampleCount){
 		// transform
+
 		in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (int) sampleCount);
 		out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (int) sampleCount);
 
 		p = fftw_plan_dft_1d((int) sampleCount, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 		p2 = fftw_plan_dft_1d((int) sampleCount, out, in, FFTW_BACKWARD, FFTW_ESTIMATE);
-
+		
+		
 		for (int i = 0; i < (int) sampleCount; i++) {
 			in[i][0] = samples[i];
 			in[i][1] = 0;
 		}
+		printf("de novo \n");
 		fftw_execute(p);
-
+		printf("sample 1: %d", (int)sampleCount);
 		// apply gains
-		for (int i = 1; i < (int)sampleCount / 4 ; i++) {
+		/*for (int i = 1; i < (int)sampleCount / 4 ; i++) {
 			out[i][0] = out[i][0] * (*ganho_pot_0);
 			out[(int)sampleCount - i][0] = out[i][0] * (*ganho_pot_0);
 			out[i + (int)sampleCount/4][0] *= (*ganho_pot_1);
 			out[(int)sampleCount - i - (int)sampleCount/4][0] = (*ganho_pot_1);
+		}*/
+		
+		for(int i = (int)sampleCount/8; i < ((int)sampleCount/4); i ++)
+		{
+			printf(" i= %d\n", i);
+			out[i][0] = out[i][0] * (*ganho_pot_0);
+			out[i+ (int)sampleCount/8][0] *=   *ganho_pot_0;
+			out[i + (int)sampleCount/4][0] *= *ganho_pot_1;
+			out[(int)sampleCount*(3/4) - i][0] *= *ganho_pot_1;
+			out[(int)sampleCount*(7/8) - i][0] *= *ganho_pot_0;
+			out[(int)sampleCount - i][0] *= *ganho_pot_0;
 		}
+
 
 //		printf("Pot 0: %lf\n", *ganho_pot_0);
 		printf("Pot 1: %d\n", (int)sampleCount);
 
 
+
 		// itransform and send to buffer
 		fftw_execute(p2);
-		dataSample->samples = (sf::Int16*) malloc(sizeof(sf::Int16) * sampleCount);
+
+		dataSample->samples = (sf::Int16*) malloc(sizeof(sf::Int16) *(int) sampleCount);
 		for (int i = 1; i < (int) sampleCount; i++) {
 			dataSample->samples[i] = in[i][0]/(int)sampleCount;
 		}
+
 
 		// dataSample->samples = samples;
 		dataSample->sampleCount = sampleCount;
@@ -78,7 +96,7 @@ private:
 
 	fftw_complex *in, *out;
 	fftw_plan p, p2;
-	const static int N = 3200;
+	//const static int N = 3200;
 	double* ganho_pot_0;
 	double* ganho_pot_1;
 	DataSample* dataSample;
